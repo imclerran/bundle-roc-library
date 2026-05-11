@@ -9649,6 +9649,20 @@ const detectCli = (rocPath) => {
     }
 };
 const quoteIfSpaces = (x) => (x.includes(" ") ? `"${x}"` : x);
+const findRocFiles = (dir) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = [];
+    for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...findRocFiles(full));
+        }
+        else if (entry.name.endsWith(".roc")) {
+            files.push(full);
+        }
+    }
+    return files;
+};
 const bundleLibraryLegacy = (rocPath, libraryEntrypointPath, bundleType, compression) => {
     if (compression !== "") {
         core.warning("Ignoring 'compression' input on legacy Roc CLI.");
@@ -9671,11 +9685,15 @@ const bundleLibraryNew = (rocPath, libraryEntrypointPath, bundleType, compressio
         core.warning("Ignoring 'bundle-type' input on new Roc CLI; bundles are always .tar.zst.");
     }
     const outputDir = path.dirname(libraryEntrypointPath);
+    // The new `roc bundle` does not auto-resolve imports — every source file
+    // must be passed on the command line. Glob `**/*.roc` under the entry's
+    // directory to mirror the legacy behaviour where one entrypoint suffices.
+    const sourceFiles = findRocFiles(outputDir);
     const args = [rocPath, "bundle", "--output-dir", outputDir];
     if (compression !== "") {
         args.push("--compression", compression);
     }
-    args.push(libraryEntrypointPath);
+    args.push(...sourceFiles);
     const bundleCommand = args.map(quoteIfSpaces).join(" ");
     core.info(`Running bundle command '${bundleCommand}'.`);
     const stdOut = (0, child_process_1.execSync)(bundleCommand);
