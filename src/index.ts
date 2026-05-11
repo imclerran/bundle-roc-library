@@ -6,12 +6,32 @@ import * as path from "path";
 
 type Octokit = ReturnType<typeof gh.getOctokit>;
 type BundleType = ".tar" | ".tar.gz" | ".tar.br";
+type CliVersion = "legacy" | "new";
 
-const bundleLibrary = (
+const NEW_CLI_EXTENSION = ".tar.zst";
+const DEFAULT_BUNDLE_TYPE: BundleType = ".tar.br";
+
+const detectCli = (rocPath: string): CliVersion => {
+  try {
+    execSync(`${rocPath} bundle --help`, { stdio: "pipe" });
+    return "new";
+  } catch {
+    return "legacy";
+  }
+};
+
+const quoteIfSpaces = (x: string): string =>
+  x.includes(" ") ? `"${x}"` : x;
+
+const bundleLibraryLegacy = (
   rocPath: string,
   libraryEntrypointPath: string,
   bundleType: BundleType,
+  compression: string,
 ) => {
+  if (compression !== "") {
+    core.warning("Ignoring 'compression' input on legacy Roc CLI.");
+  }
   const bundleCommand = [
     rocPath,
     "build",
@@ -19,8 +39,31 @@ const bundleLibrary = (
     bundleType,
     libraryEntrypointPath,
   ]
-    .map((x) => (x.includes(" ") ? `"${x}"` : x)) // Add quotes to paths that contain spaces
+    .map(quoteIfSpaces)
     .join(" ");
+  core.info(`Running bundle command '${bundleCommand}'.`);
+  const stdOut = execSync(bundleCommand);
+  core.info(stdOut.toString());
+};
+
+const bundleLibraryNew = (
+  rocPath: string,
+  libraryEntrypointPath: string,
+  bundleType: BundleType,
+  compression: string,
+) => {
+  if (bundleType !== DEFAULT_BUNDLE_TYPE) {
+    core.warning(
+      "Ignoring 'bundle-type' input on new Roc CLI; bundles are always .tar.zst.",
+    );
+  }
+  const outputDir = path.dirname(libraryEntrypointPath);
+  const args = [rocPath, "bundle", "--output-dir", outputDir];
+  if (compression !== "") {
+    args.push("--compression", compression);
+  }
+  args.push(libraryEntrypointPath);
+  const bundleCommand = args.map(quoteIfSpaces).join(" ");
   core.info(`Running bundle command '${bundleCommand}'.`);
   const stdOut = execSync(bundleCommand);
   core.info(stdOut.toString());
@@ -28,18 +71,18 @@ const bundleLibrary = (
 
 const getBundlePath = async (
   libraryEntrypointPath: string,
-  bundleType: BundleType,
+  extension: string,
 ): Promise<string> => {
   const libraryFolder = path.dirname(libraryEntrypointPath);
   core.info(
-    `Looking for bundled library in '${libraryFolder}' with extension '${bundleType}'.`,
+    `Looking for bundled library in '${libraryFolder}' with extension '${extension}'.`,
   );
   const bundleFileName = fs
     .readdirSync(libraryFolder)
-    .find((x) => x.endsWith(bundleType));
+    .find((x) => x.endsWith(extension));
   if (bundleFileName === undefined) {
     throw new Error(
-      `Couldn't find bundled library in '${libraryFolder}' with extension '${bundleType}'.`,
+      `Couldn't find bundled library in '${libraryFolder}' with extension '${extension}'.`,
     );
   }
   const bundlePath = path.resolve(path.join(libraryFolder, bundleFileName));
@@ -91,7 +134,8 @@ const main = async () => {
     // Get inputs
     const isRequired = { required: true };
     const token = core.getInput("token");
-    const bundleType = core.getInput("bundle-type", isRequired) as BundleType;
+    const bundleType = core.getInput("bundle-type") as BundleType;
+    const compression = core.getInput("compression");
     const libraryEntrypointPath = core.getInput("library", isRequired);
     const release = core.getBooleanInput("release", isRequired);
     const releaseTag = core
@@ -100,9 +144,29 @@ const main = async () => {
     const rocPath = core.getInput("roc-path", isRequired);
     const octokitClient = gh.getOctokit(token);
 
+    // Detect which Roc CLI we're talking to
+    const cli = detectCli(rocPath);
+    core.info(`Detected ${cli} Roc CLI.`);
+
     // Bundle the library
-    bundleLibrary(rocPath, libraryEntrypointPath, bundleType);
-    const bundlePath = await getBundlePath(libraryEntrypointPath, bundleType);
+    if (cli === "new") {
+      bundleLibraryNew(
+        rocPath,
+        libraryEntrypointPath,
+        bundleType,
+        compression,
+      );
+    } else {
+      bundleLibraryLegacy(
+        rocPath,
+        libraryEntrypointPath,
+        bundleType,
+        compression,
+      );
+    }
+
+    const extension = cli === "new" ? NEW_CLI_EXTENSION : bundleType;
+    const bundlePath = await getBundlePath(libraryEntrypointPath, extension);
     core.setOutput("bundle-path", bundlePath);
 
     // Publish the bundle
