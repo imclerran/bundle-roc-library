@@ -9632,7 +9632,22 @@ const core = __nccwpck_require__(2186);
 const fs = __nccwpck_require__(7147);
 const gh = __nccwpck_require__(5438);
 const path = __nccwpck_require__(1017);
-const bundleLibrary = (rocPath, libraryEntrypointPath, bundleType) => {
+const NEW_CLI_EXTENSION = ".tar.zst";
+const DEFAULT_BUNDLE_TYPE = ".tar.br";
+const detectCli = (rocPath) => {
+    try {
+        (0, child_process_1.execSync)(`${rocPath} bundle --help`, { stdio: "pipe" });
+        return "new";
+    }
+    catch (_a) {
+        return "legacy";
+    }
+};
+const quoteIfSpaces = (x) => x.includes(" ") ? `"${x}"` : x;
+const bundleLibraryLegacy = (rocPath, libraryEntrypointPath, bundleType, compression) => {
+    if (compression !== "") {
+        core.warning("Ignoring 'compression' input on legacy Roc CLI.");
+    }
     const bundleCommand = [
         rocPath,
         "build",
@@ -9640,20 +9655,35 @@ const bundleLibrary = (rocPath, libraryEntrypointPath, bundleType) => {
         bundleType,
         libraryEntrypointPath,
     ]
-        .map((x) => (x.includes(" ") ? `"${x}"` : x)) // Add quotes to paths that contain spaces
+        .map(quoteIfSpaces)
         .join(" ");
     core.info(`Running bundle command '${bundleCommand}'.`);
     const stdOut = (0, child_process_1.execSync)(bundleCommand);
     core.info(stdOut.toString());
 };
-const getBundlePath = (libraryEntrypointPath, bundleType) => __awaiter(void 0, void 0, void 0, function* () {
+const bundleLibraryNew = (rocPath, libraryEntrypointPath, bundleType, compression) => {
+    if (bundleType !== DEFAULT_BUNDLE_TYPE) {
+        core.warning("Ignoring 'bundle-type' input on new Roc CLI; bundles are always .tar.zst.");
+    }
+    const outputDir = path.dirname(libraryEntrypointPath);
+    const args = [rocPath, "bundle", "--output-dir", outputDir];
+    if (compression !== "") {
+        args.push("--compression", compression);
+    }
+    args.push(libraryEntrypointPath);
+    const bundleCommand = args.map(quoteIfSpaces).join(" ");
+    core.info(`Running bundle command '${bundleCommand}'.`);
+    const stdOut = (0, child_process_1.execSync)(bundleCommand);
+    core.info(stdOut.toString());
+};
+const getBundlePath = (libraryEntrypointPath, extension) => __awaiter(void 0, void 0, void 0, function* () {
     const libraryFolder = path.dirname(libraryEntrypointPath);
-    core.info(`Looking for bundled library in '${libraryFolder}' with extension '${bundleType}'.`);
+    core.info(`Looking for bundled library in '${libraryFolder}' with extension '${extension}'.`);
     const bundleFileName = fs
         .readdirSync(libraryFolder)
-        .find((x) => x.endsWith(bundleType));
+        .find((x) => x.endsWith(extension));
     if (bundleFileName === undefined) {
-        throw new Error(`Couldn't find bundled library in '${libraryFolder}' with extension '${bundleType}'.`);
+        throw new Error(`Couldn't find bundled library in '${libraryFolder}' with extension '${extension}'.`);
     }
     const bundlePath = path.resolve(path.join(libraryFolder, bundleFileName));
     core.info(`Found bundled library at '${bundlePath}'.`);
@@ -9687,7 +9717,8 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         // Get inputs
         const isRequired = { required: true };
         const token = core.getInput("token");
-        const bundleType = core.getInput("bundle-type", isRequired);
+        const bundleType = core.getInput("bundle-type");
+        const compression = core.getInput("compression");
         const libraryEntrypointPath = core.getInput("library", isRequired);
         const release = core.getBooleanInput("release", isRequired);
         const releaseTag = core
@@ -9695,9 +9726,18 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             .replace(/^refs\/(?:tags|heads)\//, "");
         const rocPath = core.getInput("roc-path", isRequired);
         const octokitClient = gh.getOctokit(token);
+        // Detect which Roc CLI we're talking to
+        const cli = detectCli(rocPath);
+        core.info(`Detected ${cli} Roc CLI.`);
         // Bundle the library
-        bundleLibrary(rocPath, libraryEntrypointPath, bundleType);
-        const bundlePath = yield getBundlePath(libraryEntrypointPath, bundleType);
+        if (cli === "new") {
+            bundleLibraryNew(rocPath, libraryEntrypointPath, bundleType, compression);
+        }
+        else {
+            bundleLibraryLegacy(rocPath, libraryEntrypointPath, bundleType, compression);
+        }
+        const extension = cli === "new" ? NEW_CLI_EXTENSION : bundleType;
+        const bundlePath = yield getBundlePath(libraryEntrypointPath, extension);
         core.setOutput("bundle-path", bundlePath);
         // Publish the bundle
         if (release) {
