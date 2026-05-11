@@ -9684,19 +9684,21 @@ const bundleLibraryNew = (rocPath, libraryEntrypointPath, bundleType, compressio
     if (bundleType !== DEFAULT_BUNDLE_TYPE) {
         core.warning("Ignoring 'bundle-type' input on new Roc CLI; bundles are always .tar.zst.");
     }
-    const outputDir = path.dirname(libraryEntrypointPath);
     // The new `roc bundle` does not auto-resolve imports — every source file
-    // must be passed on the command line. Glob `**/*.roc` under the entry's
-    // directory to mirror the legacy behaviour where one entrypoint suffices.
-    const sourceFiles = findRocFiles(outputDir);
-    const args = [rocPath, "bundle", "--output-dir", outputDir];
+    // must be passed on the command line. It also rejects absolute paths and
+    // paths containing `..` (roc-lang/roc#9406). Run it with cwd set to the
+    // entry's directory and pass every source as a path relative to that
+    // directory; output goes to `.` (the same directory).
+    const entryDir = path.resolve(path.dirname(libraryEntrypointPath));
+    const sourceFiles = findRocFiles(entryDir).map((f) => path.relative(entryDir, f));
+    const args = [rocPath, "bundle", "--output-dir", "."];
     if (compression !== "") {
         args.push("--compression", compression);
     }
     args.push(...sourceFiles);
     const bundleCommand = args.map(quoteIfSpaces).join(" ");
-    core.info(`Running bundle command '${bundleCommand}'.`);
-    const stdOut = (0, child_process_1.execSync)(bundleCommand);
+    core.info(`Running bundle command '${bundleCommand}' in '${entryDir}'.`);
+    const stdOut = (0, child_process_1.execSync)(bundleCommand, { cwd: entryDir });
     core.info(stdOut.toString());
 };
 const getBundlePath = (libraryEntrypointPath, extension) => __awaiter(void 0, void 0, void 0, function* () {
