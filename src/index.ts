@@ -12,16 +12,20 @@ const NEW_CLI_EXTENSION = ".tar.zst";
 const DEFAULT_BUNDLE_TYPE: BundleType = ".tar.br";
 
 const detectCli = (rocPath: string): CliVersion => {
+  // The legacy compiler prints global help (exit 0) for unknown subcommands,
+  // so an exit code alone can't distinguish CLIs. Match on a flag name unique
+  // to the new `roc bundle` subcommand.
   try {
-    execSync(`${quoteIfSpaces(rocPath)} bundle --help`, { stdio: "pipe" });
-    return "new";
+    const out = execSync(`${quoteIfSpaces(rocPath)} bundle --help`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    }).toString();
+    return out.includes("--output-dir") ? "new" : "legacy";
   } catch {
     return "legacy";
   }
 };
 
-const quoteIfSpaces = (x: string): string =>
-  x.includes(" ") ? `"${x}"` : x;
+const quoteIfSpaces = (x: string): string => (x.includes(" ") ? `"${x}"` : x);
 
 const bundleLibraryLegacy = (
   rocPath: string,
@@ -150,12 +154,7 @@ const main = async () => {
 
     // Bundle the library
     if (cli === "new") {
-      bundleLibraryNew(
-        rocPath,
-        libraryEntrypointPath,
-        bundleType,
-        compression,
-      );
+      bundleLibraryNew(rocPath, libraryEntrypointPath, bundleType, compression);
     } else {
       bundleLibraryLegacy(
         rocPath,

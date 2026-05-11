@@ -75,13 +75,13 @@ subcommand, the legacy compiler does not. No version-string parsing.
 
 Updates to `action.yaml`:
 
-| Input | Required | Default | Applies to | Change |
-|---|---|---|---|---|
-| `library` | yes | — | both | unchanged |
-| `roc-path` | yes | `roc` | both | unchanged |
-| `bundle-type` | no | `.tar.br` | legacy only | drop `required: true`; warn-and-ignore on new CLI |
-| `compression` | no | *(unset)* | new only | **new input**; numeric 1–22; if unset, omit `--compression` and let `roc bundle` use its default; warn-and-ignore on legacy |
-| `release`, `tag`, `token` | — | — | both | unchanged |
+| Input                     | Required | Default   | Applies to  | Change                                                                                                                      |
+| ------------------------- | -------- | --------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `library`                 | yes      | —         | both        | unchanged                                                                                                                   |
+| `roc-path`                | yes      | `roc`     | both        | unchanged                                                                                                                   |
+| `bundle-type`             | no       | `.tar.br` | legacy only | drop `required: true`; warn-and-ignore on new CLI                                                                           |
+| `compression`             | no       | _(unset)_ | new only    | **new input**; numeric 1–22; if unset, omit `--compression` and let `roc bundle` use its default; warn-and-ignore on legacy |
+| `release`, `tag`, `token` | —        | —         | both        | unchanged                                                                                                                   |
 
 Output `bundle-path` unchanged.
 
@@ -91,10 +91,10 @@ The two CLIs accept disjoint configuration knobs. When the user has set an
 input that doesn't apply to the detected CLI:
 
 - **`compression` set but legacy CLI detected:** `core.warning("Ignoring
-  'compression' input on legacy Roc CLI.")` and proceed.
+'compression' input on legacy Roc CLI.")` and proceed.
 - **`bundle-type` set to a non-default value but new CLI detected:**
   `core.warning("Ignoring 'bundle-type' input on new Roc CLI; bundles are
-  always .tar.zst.")` and proceed.
+always .tar.zst.")` and proceed.
 
 Comparing `bundle-type` against its default (`.tar.br`) before warning means
 existing workflows that simply rely on the default don't get a noisy warning
@@ -105,15 +105,19 @@ when they upgrade their compiler.
 `bundleLibrary` becomes a switch on the detection result.
 
 **Legacy branch (unchanged):**
+
 ```
 roc build --bundle <bundle-type> <entry>
 ```
+
 Plus the warn-on-`compression` check above.
 
 **New branch:**
+
 ```
 roc bundle --output-dir <dirname(entry)> [--compression <N>] <entry>
 ```
+
 - `--output-dir` is always passed and pinned to the entrypoint's directory,
   so the bundle ends up where legacy users expect it and `getBundlePath` can
   keep scanning a single known directory.

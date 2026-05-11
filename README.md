@@ -9,15 +9,15 @@ subcommand — no configuration is required.
 
 ## Inputs
 
-| Input | Required | Default | Notes |
-|---|---|---|---|
-| `library` | yes | — | Path to the library's entrypoint file. |
-| `roc-path` | no | `roc` | Path to the Roc executable. |
-| `bundle-type` | no | `.tar.br` | Legacy CLI only. One of `.tar`, `.tar.gz`, `.tar.br`. Ignored with a warning on the new CLI, which always produces `.tar.zst`. |
-| `compression` | no | *(unset)* | New CLI only. zstd compression level (1–22). Ignored with a warning on the legacy CLI. If unset, the compiler's default is used. |
-| `release` | no | `true` on release events, else `false` | Whether to upload the bundle to the repository's releases. |
-| `tag` | no | `${{ github.ref }}` | Tag of the release to upload to. |
-| `token` | no | `${{ github.token }}` | GitHub token used to upload the release asset. |
+| Input         | Required | Default                                | Notes                                                                                                                            |
+| ------------- | -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `library`     | yes      | —                                      | Path to the library's entrypoint file.                                                                                           |
+| `roc-path`    | no       | `roc`                                  | Path to the Roc executable.                                                                                                      |
+| `bundle-type` | no       | `.tar.br`                              | Legacy CLI only. One of `.tar`, `.tar.gz`, `.tar.br`. Ignored with a warning on the new CLI, which always produces `.tar.zst`.   |
+| `compression` | no       | _(unset)_                              | New CLI only. zstd compression level (1–22). Ignored with a warning on the legacy CLI. If unset, the compiler's default is used. |
+| `release`     | no       | `true` on release events, else `false` | Whether to upload the bundle to the repository's releases.                                                                       |
+| `tag`         | no       | `${{ github.ref }}`                    | Tag of the release to upload to.                                                                                                 |
+| `token`       | no       | `${{ github.token }}`                  | GitHub token used to upload the release asset.                                                                                   |
 
 ## Usage
 

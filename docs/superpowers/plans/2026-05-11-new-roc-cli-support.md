@@ -14,24 +14,26 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|---|---|---|
-| `action.yaml` | modify | Drop `required: true` from `bundle-type`; add new optional `compression` input. |
-| `src/index.ts` | modify | Add `detectCli`; split `bundleLibrary` into legacy/new variants; route extension to `getBundlePath`; read `compression` input. |
-| `dist/index.js` | regenerate | Compiled output that GitHub Actions actually executes. CI fails if it's stale. |
-| `.github/workflows/run-self.yaml` | rewrite | Matrix over legacy + new compilers; switch to `roc-lang/setup-roc@main`. |
-| `README.md` | modify | Document `compression`; note which inputs apply to which CLI. |
+| File                              | Action     | Responsibility                                                                                                                 |
+| --------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `action.yaml`                     | modify     | Drop `required: true` from `bundle-type`; add new optional `compression` input.                                                |
+| `src/index.ts`                    | modify     | Add `detectCli`; split `bundleLibrary` into legacy/new variants; route extension to `getBundlePath`; read `compression` input. |
+| `dist/index.js`                   | regenerate | Compiled output that GitHub Actions actually executes. CI fails if it's stale.                                                 |
+| `.github/workflows/run-self.yaml` | rewrite    | Matrix over legacy + new compilers; switch to `roc-lang/setup-roc@main`.                                                       |
+| `README.md`                       | modify     | Document `compression`; note which inputs apply to which CLI.                                                                  |
 
 ---
 
 ## Task 1: Update `action.yaml` inputs
 
 **Files:**
+
 - Modify: `action.yaml`
 
 - [ ] **Step 1: Edit `action.yaml`**
 
 Replace the entire `inputs:` block so that:
+
 - `bundle-type` becomes optional (drop `required: true`; keep default)
 - a new `compression` input is added (optional, no default)
 
@@ -82,6 +84,7 @@ git commit -m "Add compression input and make bundle-type optional"
 ## Task 2: Rewrite `src/index.ts` with CLI detection and dispatch
 
 **Files:**
+
 - Modify: `src/index.ts`
 
 This task replaces the file's contents in one shot — the changes are interleaved across most functions, and showing partial states between sub-steps would be confusing.
@@ -113,8 +116,7 @@ const detectCli = (rocPath: string): CliVersion => {
   }
 };
 
-const quoteIfSpaces = (x: string): string =>
-  x.includes(" ") ? `"${x}"` : x;
+const quoteIfSpaces = (x: string): string => (x.includes(" ") ? `"${x}"` : x);
 
 const bundleLibraryLegacy = (
   rocPath: string,
@@ -243,12 +245,7 @@ const main = async () => {
 
     // Bundle the library
     if (cli === "new") {
-      bundleLibraryNew(
-        rocPath,
-        libraryEntrypointPath,
-        bundleType,
-        compression,
-      );
+      bundleLibraryNew(rocPath, libraryEntrypointPath, bundleType, compression);
     } else {
       bundleLibraryLegacy(
         rocPath,
@@ -311,6 +308,7 @@ git commit -m "Add Roc CLI autodetection and new-CLI bundle dispatch"
 ## Task 3: Rebuild and commit `dist/index.js`
 
 **Files:**
+
 - Modify: `dist/index.js` (regenerated)
 - Modify: `dist/licenses.txt` (regenerated; only if dependencies changed — usually unchanged)
 
@@ -338,6 +336,7 @@ git commit -m "Rebuild dist/ for new Roc CLI support"
 ## Task 4: Replace self-test workflow with a CLI matrix
 
 **Files:**
+
 - Modify: `.github/workflows/run-self.yaml`
 
 - [ ] **Step 1: Replace the file's contents**
@@ -406,6 +405,7 @@ jobs:
 ```
 
 Notes for the engineer:
+
 - The `path:` for the example checkout is conditionally `roc-html` or `rtils` to keep the entrypoint paths in `matrix.library` valid.
 - `roc-lang/setup-roc@main` takes a `version:` input (not `roc-version:`); there's no `token:` input, unlike the previous `Hasnep/setup-roc@main`.
 - `fail-fast: false` so a failure in one leg doesn't mask the other.
@@ -427,6 +427,7 @@ git commit -m "Self-test against legacy and new Roc compilers"
 ## Task 5: Update README
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Replace the file's contents**
@@ -445,15 +446,15 @@ subcommand — no configuration is required.
 
 ## Inputs
 
-| Input | Required | Default | Notes |
-|---|---|---|---|
-| `library` | yes | — | Path to the library's entrypoint file. |
-| `roc-path` | no | `roc` | Path to the Roc executable. |
-| `bundle-type` | no | `.tar.br` | Legacy CLI only. One of `.tar`, `.tar.gz`, `.tar.br`. Ignored with a warning on the new CLI, which always produces `.tar.zst`. |
-| `compression` | no | *(unset)* | New CLI only. zstd compression level (1–22). Ignored with a warning on the legacy CLI. If unset, the compiler's default is used. |
-| `release` | no | `true` on release events, else `false` | Whether to upload the bundle to the repository's releases. |
-| `tag` | no | `${{ github.ref }}` | Tag of the release to upload to. |
-| `token` | no | `${{ github.token }}` | GitHub token used to upload the release asset. |
+| Input         | Required | Default                                | Notes                                                                                                                            |
+| ------------- | -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `library`     | yes      | —                                      | Path to the library's entrypoint file.                                                                                           |
+| `roc-path`    | no       | `roc`                                  | Path to the Roc executable.                                                                                                      |
+| `bundle-type` | no       | `.tar.br`                              | Legacy CLI only. One of `.tar`, `.tar.gz`, `.tar.br`. Ignored with a warning on the new CLI, which always produces `.tar.zst`.   |
+| `compression` | no       | _(unset)_                              | New CLI only. zstd compression level (1–22). Ignored with a warning on the legacy CLI. If unset, the compiler's default is used. |
+| `release`     | no       | `true` on release events, else `false` | Whether to upload the bundle to the repository's releases.                                                                       |
+| `tag`         | no       | `${{ github.ref }}`                    | Tag of the release to upload to.                                                                                                 |
+| `token`       | no       | `${{ github.token }}`                  | GitHub token used to upload the release asset.                                                                                   |
 
 ## Usage
 

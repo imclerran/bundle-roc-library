@@ -9635,15 +9635,20 @@ const path = __nccwpck_require__(1017);
 const NEW_CLI_EXTENSION = ".tar.zst";
 const DEFAULT_BUNDLE_TYPE = ".tar.br";
 const detectCli = (rocPath) => {
+    // The legacy compiler prints global help (exit 0) for unknown subcommands,
+    // so an exit code alone can't distinguish CLIs. Match on a flag name unique
+    // to the new `roc bundle` subcommand.
     try {
-        (0, child_process_1.execSync)(`${quoteIfSpaces(rocPath)} bundle --help`, { stdio: "pipe" });
-        return "new";
+        const out = (0, child_process_1.execSync)(`${quoteIfSpaces(rocPath)} bundle --help`, {
+            stdio: ["ignore", "pipe", "ignore"],
+        }).toString();
+        return out.includes("--output-dir") ? "new" : "legacy";
     }
     catch (_a) {
         return "legacy";
     }
 };
-const quoteIfSpaces = (x) => x.includes(" ") ? `"${x}"` : x;
+const quoteIfSpaces = (x) => (x.includes(" ") ? `"${x}"` : x);
 const bundleLibraryLegacy = (rocPath, libraryEntrypointPath, bundleType, compression) => {
     if (compression !== "") {
         core.warning("Ignoring 'compression' input on legacy Roc CLI.");
