@@ -23,11 +23,13 @@ jobs:
           - cli: legacy
             roc-version: alpha4-rolling
             example-repo: Hasnep/roc-html
+            checkout-path: roc-html
             library: roc-html/src/main.roc
             expected-extension: .tar.br
           - cli: new
             roc-version: nightly-new-compiler
             example-repo: imclerran/rtils
+            checkout-path: rtils
             library: rtils/package/main.roc
             expected-extension: .tar.zst
     steps:
@@ -37,7 +39,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ matrix.example-repo }}
-          path: ${{ matrix.example-repo == 'Hasnep/roc-html' && 'roc-html' || 'rtils' }}
+          path: ${{ matrix.checkout-path }}
       - name: Install Roc
         uses: roc-lang/setup-roc@main
         with:

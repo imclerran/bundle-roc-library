@@ -9636,7 +9636,7 @@ const NEW_CLI_EXTENSION = ".tar.zst";
 const DEFAULT_BUNDLE_TYPE = ".tar.br";
 const detectCli = (rocPath) => {
     try {
-        (0, child_process_1.execSync)(`${rocPath} bundle --help`, { stdio: "pipe" });
+        (0, child_process_1.execSync)(`${quoteIfSpaces(rocPath)} bundle --help`, { stdio: "pipe" });
         return "new";
     }
     catch (_a) {

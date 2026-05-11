@@ -13,7 +13,7 @@ const DEFAULT_BUNDLE_TYPE: BundleType = ".tar.br";
 
 const detectCli = (rocPath: string): CliVersion => {
   try {
-    execSync(`${rocPath} bundle --help`, { stdio: "pipe" });
+    execSync(`${quoteIfSpaces(rocPath)} bundle --help`, { stdio: "pipe" });
     return "new";
   } catch {
     return "legacy";
