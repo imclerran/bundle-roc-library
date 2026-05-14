@@ -24,20 +24,6 @@ const detectCli = (rocPath: string): CliVersion => {
 
 const quoteIfSpaces = (x: string): string => (x.includes(" ") ? `"${x}"` : x);
 
-const findRocFiles = (dir: string): string[] => {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...findRocFiles(full));
-    } else if (entry.name.endsWith(".roc")) {
-      files.push(full);
-    }
-  }
-  return files;
-};
-
 const bundleLibraryLegacy = (
   rocPath: string,
   libraryEntrypointPath: string,
@@ -72,16 +58,14 @@ const bundleLibraryNew = (
       "Ignoring 'bundle-type' input on new Roc CLI; bundles are always '.tar.zst'.",
     );
   }
-  // The new `roc bundle` does not auto-resolve imports — every source file must be passed on the command line.
   const outputDir = path.dirname(libraryEntrypointPath);
-  const sourceFiles = findRocFiles(outputDir);
   const bundleCommand = [
     rocPath,
     "bundle",
     "--output-dir",
     outputDir,
     ...(compression !== "" ? ["--compression", compression] : []),
-    ...sourceFiles,
+    libraryEntrypointPath,
   ]
     .map(quoteIfSpaces)
     .join(" ");
